@@ -1,0 +1,179 @@
+---
+title: "Animal_Rescue"
+author: "Khine Wai"
+date: "2024-01-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+---
+#Background and Introduction
+This analysis is a part of Google data analytics certifcation.
+I received this dataset from NYC opendata [link here](https://data.cityofnewyork.us/Environment/Urban-Park-Ranger-Animal-Condition-Response/fuhs-xmg2/data_preview)
+This data is made available by NYC department of parks and recreation.
+In this analysis, I will use this dataset to see the different distribution rescue and relocation of different types of animal species in NYC.
+
+#Data Preparation
+First we will start by importing the dataset to R. I directly uploaded the dataset from device to R. We want to see the summary statisc of Animal_resuce dataset first.
+
+```{r cars}
+summary(Animal_resuce)
+```
+
+## Installing Packages
+
+
+```{r package}
+install.packages("tidyverse")
+install.packages("here")
+library("here")
+install.packages("skimr")
+library("skimr")
+install.packages("janitor")
+library(tidyr)
+library(dplyr)
+library(ggmap)
+```
+---
+#Data Processing
+I start this process by examining whether there are NA values first. Then, I checked to see how many type of Animals are there for the column Species Status and number of Animals.
+
+----
+First of all I will clean the data. First of all the file name is Animal_resuce so I assigned it into Animal_rescue instead of changing it completely so that in case I messed up, I just need to reload the file here. Secondly, Date and Time for initial call and response are in combined so I will spilt them. I also clean the age column as initally it has two or three different different variables in one row. I completed them under using pipe function. Finally, I deleted N/As from Animal Conditon, Species Status and # of Animals column. I also assigned different borough different code so that in the later part of the analysis, I can do logisitc regression testing. After this, I save the cleaned dataset as an excel file for my own record.
+---
+```{r data cleaning}
+## Now Lets clean our data
+
+## File name is Animal_resuce so I changed into Animal_rescue
+
+# Date and Time for initial call and response are in combined so I will spilt them, I also clean the age column as initally it has two or three different different variables in one row
+Animal_rescue <- Animal_rescue %>%
+  separate("Date and Time of initial call", c("date of initial call", "time of initial call"), sep = " ") %>%
+  separate("Date and time of Ranger response", c("date of response", "time of response"), sep = " ") %>%
+  mutate(cleaned_age = case_when(
+    grepl("adult", Age, ignore.case = TRUE) ~ "adult",
+    grepl("infant", Age, ignore.case = TRUE) ~ "infant",
+    grepl("juvenile", Age, ignore.case = TRUE) ~ "juvenile",
+    TRUE ~ NA_character_
+  ))
+# Deleting N/As 
+Animal_rescue <- Animal_rescue %>%
+  filter(`Animal Condition` != "N/A")
+Animal_rescue <- Animal_rescue %>%
+  filter(`Species Status` != "N/A")
+Animal_rescue <- Animal_rescue %>%
+  filter(`# of Animals` != "N/A")
+
+Animal_rescue <- Animal_rescue %>%
+  mutate(Borough_Code = case_when(
+    Borough == "Manhattan" ~ 1,
+    Borough == "Brooklyn" ~ 2,
+    Borough == "Queens" ~ 3,
+    Borough == "Bronx" ~ 4,
+    Borough == "Staten Island" ~ 5,
+    TRUE ~ NA_integer_
+  ))
+# Print the updated dataset
+print(Animal_rescue)
+
+# Install and load the 'writexl' package
+install.packages("writexl")
+library(writexl)
+
+
+# Save as Excel file
+write_xlsx(Animal_rescue, "/Users/khinehsuwai/Desktop/Data_Analytics_Certificate.xlsx")
+
+```
+---
+#Data Analysis and Visualization
+There will be two different type of analysis made in this sectioon, First the visualization created in R and uploaded from Tableau. The second part will be data analysis, where I test my hypothese of animals that are not from manhatttan get rescued later than the ones from other borough
+
+##Years trend in animals rescused
+In this part, I used ggplot2, timechange(to convert the date column to be just year), dplyr and lubridate. I also changed the date to show only year as I want to see the trend as in groups of year. My inital hypothese for this analysis was that as in pandemic years, there was be more animal rescue due to many people not able to take care of their pets(domestic species) and thus seeing an increase in animal rescue in 2020 to 2022 for domestic species. However, surprisingly the only noticeable trend was at during 2019 there was an increase which peak at 2020 and goes doewn after 2020 for native species.
+
+```{r Seeing which years had the most animal rescused}
+
+# Install or reinstall janitor and its dependencies
+install.packages("janitor", dependencies = TRUE)  
+library(janitor)
+install.packages("timechange")
+library(timechange)
+library(dplyr)
+library(lubridate)
+
+# changing the date to show only year 
+Animal_rescue <- Animal_rescue %>%
+  mutate(Year_of_initial_call = year(as.Date(`date of initial call`, format="%Y-%m-%d")))
+```
+---
+# Plot1: Total Number of Animals by Species Status and Year
+---
+```{r Seeing which years had the most animal rescused-2}
+
+# Assuming 'merged_data' is the merged dataset containing 'Initial_Call_Year', '# of Animals', and 'Species Status'
+
+# Calculate Total_Count
+Year_vs_Animal_Species<- Animal_rescue %>%
+  group_by(Year_of_initial_call, `Species Status`) %>%
+  summarise(Total_Count = sum(`# of Animals`, na.rm = TRUE))
+
+# Create a line graph
+ggplot(Year_vs_Animal_Species, aes(x = Year_of_initial_call, y = Total_Count, color = `Species Status`)) +
+  geom_line(stat = "identity") +
+  geom_point() +
+  labs(title = "Total Number of Animals by Species Status and Year",
+       x = "Year",
+       y = "Total Number of Animals",
+       color = "Species Status") +
+  theme_minimal()
+
+
+```
+---
+The hypothese was further proven to be not ture by native species on top of the most animal rescued in 2020 to 2022
+---
+```{r}
+
+filtered_data <- Year_vs_Animal_Species %>%
+  filter(Year_of_initial_call>= 2020 & Year_of_initial_call <= 2022)
+
+# Group by species status and calculate the total rescue count for each species status
+species_summary <- filtered_data %>%
+  group_by(`Species Status`) %>%
+  summarise(Total_Rescue = sum(`Total_Count`, na.rm = TRUE))
+
+# Arrange in descending order to get the top 5
+top_species <- species_summary %>%
+  arrange(desc(Total_Rescue)) %>%
+  head(5)
+
+# Print the top 5 species
+print(top_species)
+```
+
+```{r How many numbers of animals each spieces represent?}
+library(ggplot2)
+
+ggplot(Animal_rescue, aes(x = `Species Status`, fill = `Species Status`, weight = `# of Animals`)) +
+  geom_bar() +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_stack(vjust = 0.5),
+    size = 3
+  ) +
+  labs(title = "Number of Animals by Species Status",
+       x = "Species Status",
+       y = "Total Number of Animals") +
+  theme_minimal()
+
+```
+---
+My another hyphothese is that manhattan would be the fastest neighborhood in terms of dispatch time and I proved that it is right by my visualization in tableau [link](https://public.tableau.com/views/RescuedAnimals/Sheet1?:language=en-US&:display_count=n&:origin=viz_share_link)
+---
+
