@@ -1,0 +1,20 @@
+This analysis is a part of Google data analytics certification.
+I received this dataset from NYC opendata [link here](https://data.cityofnewyork.us/Environment/Urban-Park-Ranger-Animal-Condition-Response/fuhs-xmg2/data_preview)
+
+This data is made available by NYC department of parks and recreation about different animals rescued from the years 2018 to 2023.
+In this analysis, I will use this dataset to see the different distribution rescue and relocation of different types of animal species in NYC.
+
+# Table_of_Content
+1. Packages
+2. Data Preparation
+3. Data Processing
+4. Data Analysis and Visualization
+    1. R
+        1. Plot1: Total Number of Animals by Species Status and Year
+        2. Plot2: The Most Rescued Animal Species
+    2. Tableau
+        1. Plot1: Boroughs with the Longest Dispatch Time
+        2. Plot2: Boroughs in Ranks of Animal Conditions when being Rescued
+5. Conclusion
+  
+
